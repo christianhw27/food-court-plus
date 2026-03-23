@@ -1,9 +1,32 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
-import '../auth/login_screen.dart'; // Buat fungsi logout nanti
-
-class ProfileScreen extends StatelessWidget {
+import '../../services/auth_service.dart';
+import '../../models/user_model.dart';
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  UserModel? _userData;
+  final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() async {
+    final data = await _authService.currentUserData;
+    if (mounted) {
+      setState(() {
+        _userData = data;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +57,13 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Danny Christian Hermawan', // <-- Nama lu langsung terpampang!
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                        Text(
+                          _userData?.name ?? 'Loading...',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'D4 Manajemen Informatika', // <-- Jurusan lu!
+                          _userData?.email ?? 'Memuat data...',
                           style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                         ),
                         const SizedBox(height: 8),
@@ -139,9 +162,9 @@ class ProfileScreen extends StatelessWidget {
                     side: const BorderSide(color: Colors.red),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    // Logika balik ke login
-                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                  onPressed: () async {
+                    await _authService.signOut();
+                    // AuthWrapper akan otomatis menghandle navigasi setelah logout
                   },
                   child: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),

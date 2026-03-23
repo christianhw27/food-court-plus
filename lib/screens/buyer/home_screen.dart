@@ -1,8 +1,33 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../services/auth_service.dart';
+import '../../models/user_model.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  UserModel? _userData;
+  final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() async {
+    final data = await _authService.currentUserData;
+    if (mounted) {
+      setState(() {
+        _userData = data;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +46,9 @@ class HomeScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Food Court Plus+',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      Text(
+                        _userData != null ? 'Halo, ${_userData!.name}!' : 'Food Court Plus+',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
                       ),
                       Text(
                         'Kantin Pusat UNESA',

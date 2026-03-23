@@ -1,9 +1,47 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
-import '../main_layout.dart';
+import '../../services/auth_service.dart';
+import 'register_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
+  bool _isLoading = false;
+
+  void _login() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tolong isi email dan password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+      // AuthWrapper akan otomatis mengalihkan setelah state berubah
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login Gagal: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +130,7 @@ class LoginScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextField(
+                          controller: _emailController,
                           style: const TextStyle(color: AppTheme.textDark),
                           decoration: InputDecoration(
                             filled: true,
@@ -117,6 +156,7 @@ class LoginScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         TextField(
+                          controller: _passwordController,
                           obscureText: true,
                           style: const TextStyle(color: AppTheme.textDark),
                           decoration: InputDecoration(
@@ -159,13 +199,10 @@ class LoginScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => const MainLayout()),
-                              );
-                            },
-                            child: const Text(
+                            onPressed: _isLoading ? null : _login,
+                            child: _isLoading 
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
                               'Masuk Sekarang',
                               style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                             ),
@@ -192,7 +229,12 @@ class LoginScreen extends StatelessWidget {
                     children: [
                       Text('Belum punya akun?', style: TextStyle(color: Colors.grey.shade600)),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                          );
+                        },
                         child: const Text('Daftar di sini', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                       ),
                     ],

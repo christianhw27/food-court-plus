@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart'; // <-- Tanda: Import Lottie
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme.dart';
-import 'auth/login_screen.dart';
+import '../widgets/auth_wrapper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -104,9 +105,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       backgroundColor: AppTheme.primaryColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_currentPage == onboardingData.length - 1) {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+                        // Simpan status bahwa sudah pernah onboarding
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('isFirstTime', false);
+
+                        if (mounted) {
+                          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AuthWrapper()));
+                        }
                       } else {
                         _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
                       }
