@@ -16,6 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _authService = AuthService();
   
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   void _register() async {
     if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -148,11 +149,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          obscureText: isPassword,
+          obscureText: isPassword ? _obscurePassword : false,
           decoration: InputDecoration(
             filled: true,
             fillColor: AppTheme.backgroundColor,
             prefixIcon: Icon(icon, color: Colors.grey),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  )
+                : null,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
         ),

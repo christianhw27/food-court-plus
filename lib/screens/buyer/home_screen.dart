@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../models/food_model.dart';
+import '../../models/stall_model.dart';
+import '../../services/stall_service.dart';
+import 'food_detail_screen.dart';
+import 'stall_detail_screen.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import '../../widgets/app_network_image.dart';
+import 'cart_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +20,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   UserModel? _userData;
   final _authService = AuthService();
+  final _stallService = StallService();
+
+  String _selectedCategory = 'Semua';
+
+  final List<Map<String, dynamic>> _categories = [
+    {'label': 'Semua', 'icon': Icons.restaurant_menu},
+    {'label': 'Makanan Berat', 'icon': Icons.lunch_dining},
+    {'label': 'Minuman', 'icon': Icons.local_cafe},
+    {'label': 'Cemilan', 'icon': Icons.cookie},
+    {'label': 'Kopi & Minuman Panas', 'icon': Icons.coffee},
+  ];
 
   @override
   void initState() {
@@ -22,11 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadUserData() async {
     final data = await _authService.currentUserData;
-    if (mounted) {
-      setState(() {
-        _userData = data;
-      });
-    }
+    if (mounted) setState(() => _userData = data);
+  }
+
+  // Filter makanan berdasarkan kategori yang dipilih
+  List<FoodModel> _filterFoods(List<FoodModel> foods) {
+    if (_selectedCategory == 'Semua') return foods;
+    return foods.where((f) => f.category == _selectedCategory).toList();
+  }
+
+  String _formatPrice(double price) {
+    final str = price.toStringAsFixed(0);
+    return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   @override
@@ -34,128 +59,166 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- HEADER ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _userData != null ? 'Halo, ${_userData!.name}!' : 'Food Court Plus+',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                      ),
-                      Text(
-                        'Kantin Pusat UNESA',
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Color(0xFFFEEBC8), // Oranye pudar
-                    child: Icon(Icons.notifications_outlined, color: AppTheme.primaryColor),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // --- SEARCH BAR ---
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Cari makanan, minuman, stan...',
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  suffixIcon: Container(
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      borderRadius: BorderRadius.circular(8),
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) => [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- HEADER ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _userData != null ? 'Halo, ${_userData!.name}! 👋' : 'Food Court Plus+',
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                            ),
+                            Text(
+                              'Kantin Pusat UNESA',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () => Navigator.push(
+                                  context, MaterialPageRoute(builder: (_) => const CartScreen())),
+                              child: const CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Color(0xFFFEEBC8),
+                                child: Icon(Icons.shopping_cart_outlined, color: AppTheme.primaryColor),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Color(0xFFFEEBC8),
+                              child: Icon(Icons.notifications_outlined, color: AppTheme.primaryColor),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.tune, color: Colors.white, size: 20),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: Colors.grey.shade200),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-              // --- KATEGORI HORIZONTAL ---
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildCategoryChip('Semua', Icons.restaurant_menu, true),
-                    _buildCategoryChip('Makanan Berat', Icons.lunch_dining, false),
-                    _buildCategoryChip('Minuman', Icons.local_cafe, false),
-                    _buildCategoryChip('Cemilan', Icons.cookie, false),
+                    // --- SEARCH BAR ---
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Cari makanan, minuman, stan...',
+                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                        suffixIcon: Container(
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.tune, color: Colors.white, size: 20),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- KATEGORI ---
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _categories
+                            .map((cat) => _buildCategoryChip(
+                                  cat['label'] as String,
+                                  cat['icon'] as IconData,
+                                  _selectedCategory == cat['label'],
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+            ),
+          ],
+          body: StreamBuilder<List<FoodModel>>(
+            stream: _stallService.getAllFoods(),
+            builder: (context, foodSnapshot) {
+              return StreamBuilder<List<StallModel>>(
+                stream: _stallService.getAllStalls(),
+                builder: (context, stallSnapshot) {
+                  final allFoods = foodSnapshot.data ?? [];
+                  final allStalls = stallSnapshot.data ?? [];
+                  final filteredFoods = _filterFoods(allFoods);
+                  final isLoading = foodSnapshot.connectionState == ConnectionState.waiting ||
+                      stallSnapshot.connectionState == ConnectionState.waiting;
 
-              // --- POPULAR FOOD SECTION ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Menu Populer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('Lihat Semua', style: TextStyle(color: AppTheme.primaryColor)),
-                  )
-                ],
-              ),
-              const SizedBox(height: 16),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFoodCard('Ayam Geprek', 'Kantin Mas Rusdi', 'Rp 15.000', '4.8'),
-                    _buildFoodCard('Nasi Campur', 'Warung Pak Gatot', 'Rp 12.000', '4.6'),
-                    _buildFoodCard('Es Teh Jumbo', 'Es Seger Boyolali', 'Rp 4.000', '4.9'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
+                  if (isLoading) {
+                    return const Center(
+                        child: CircularProgressIndicator(color: AppTheme.primaryColor));
+                  }
 
-              // --- BAGIAN STAN POPULER ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Stan Populer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('Lihat Semua', style: TextStyle(color: AppTheme.primaryColor)),
-                  )
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // List Vertikal untuk Stan
-              _buildStallCard('Kantin Mas Rusdi', 'Makanan Berat & Es', '4.8', true),
-              const SizedBox(height: 16),
-              _buildStallCard('Warung Pak Gatot', 'Kopi & Cemilan', '4.6', true),
-              const SizedBox(height: 16),
-              _buildStallCard('Geprek Si Imut', 'Makanan Spesial', '4.9', false),
-              
-              const SizedBox(height: 40), // Padding bawah biar gak mentok navigasi
-            ],
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // --- MENU POPULER ---
+                        _buildSectionHeader('Menu Tersedia', '${filteredFoods.length} item'),
+                        const SizedBox(height: 16),
+                        if (filteredFoods.isEmpty)
+                          _buildEmptyState(
+                              icon: Icons.restaurant_menu_outlined,
+                              message: _selectedCategory == 'Semua'
+                                  ? 'Belum ada menu tersedia'
+                                  : 'Tidak ada menu di kategori ini')
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: filteredFoods
+                                  .map((food) => _buildFoodCard(food, allStalls))
+                                  .toList(),
+                            ),
+                          ),
+                        const SizedBox(height: 32),
+
+                        // --- STAN POPULER ---
+                        _buildSectionHeader('Stan Tersedia', '${allStalls.length} stan'),
+                        const SizedBox(height: 16),
+                        if (allStalls.isEmpty)
+                          _buildEmptyState(
+                              icon: Icons.store_outlined,
+                              message: 'Belum ada stan yang terdaftar')
+                        else
+                          ...allStalls
+                              .map((stall) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: _buildStallCard(stall),
+                                  )),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ),
       ),
@@ -163,169 +226,257 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ==========================================================
-  // WIDGET BANTUAN (HELPER METHODS)
+  // HELPER WIDGETS
   // ==========================================================
 
-  // 1. Widget Bantuan untuk Kategori
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(title,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+        Text(subtitle,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+      ],
+    );
+  }
+
   Widget _buildCategoryChip(String label, IconData icon, bool isSelected) {
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isSelected ? AppTheme.primaryColor : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: isSelected ? Colors.white : AppTheme.textDark),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textDark,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return GestureDetector(
+      onTap: () => setState(() => _selectedCategory = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.textDark),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : AppTheme.textDark,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 2. Widget Bantuan untuk Kartu Makanan
-  Widget _buildFoodCard(String name, String stall, String price, String rating) {
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 120,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: const Icon(Icons.fastfood, color: Colors.grey, size: 40),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(stall, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(price, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                        const SizedBox(width: 4),
-                        Text(rating, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    )
-                  ],
-                )
-              ],
-            ),
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // 3. Widget Bantuan untuk Kartu Stan
-  Widget _buildStallCard(String name, String category, String rating, bool isOpen) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+  Widget _buildFoodCard(FoodModel food, List<StallModel> stalls) {
+    final stallName = stalls.firstWhere(
+      (s) => s.id == food.stallId,
+      orElse: () => StallModel(
+          id: '', ownerUid: '', name: 'Stan', description: '', category: '', isOpen: false),
+    ).name;
+
+    final heroTag = 'food_${food.id}';
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FoodDetailScreen(food: food, stallName: stallName),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 140,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: const Center(
-              child: Icon(Icons.storefront, color: Colors.grey, size: 50),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textDark),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      category,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                    ),
-                  ],
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Hero(
+              tag: heroTag,
+              child: AppNetworkImage(
+                imageUrl: food.imageUrl,
+                height: 120,
+                width: double.infinity,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                placeholder: Container(
+                  height: 120,
+                  color: const Color(0xFFE2E8F0),
+                  child: const Icon(Icons.fastfood, color: Colors.grey, size: 40),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 16),
-                        const SizedBox(width: 4),
-                        Text(rating, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isOpen ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        isOpen ? 'Buka' : 'Tutup',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isOpen ? Colors.green : Colors.red,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(food.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(stallName,
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _formatPrice(food.price),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, color: AppTheme.primaryColor, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  ],
-                )
-              ],
+                      if (food.rating > 0)
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 12),
+                            Text(food.rating.toStringAsFixed(1),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStallCard(StallModel stall) {
+    final heroTag = 'stall_${stall.id}';
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StallDetailScreen(stall: stall)),
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Hero(
+              tag: heroTag,
+              child: AppNetworkImage(
+                imageUrl: stall.imageUrl,
+                height: 130,
+                width: double.infinity,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                placeholder: Container(
+                  height: 130,
+                  color: const Color(0xFFE2E8F0),
+                  child: const Center(
+                    child: Icon(Icons.storefront, color: Colors.grey, size: 50),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(stall.name,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textDark)),
+                        const SizedBox(height: 4),
+                        Text(stall.category,
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                        if (stall.location.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(Icons.location_on_outlined,
+                                  size: 13, color: Colors.grey.shade400),
+                              const SizedBox(width: 2),
+                              Text(stall.location,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (stall.rating > 0)
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 16),
+                            const SizedBox(width: 4),
+                            Text(stall.rating.toStringAsFixed(1),
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: stall.isOpen
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          stall.isOpen ? 'Buka' : 'Tutup',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: stall.isOpen ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({required IconData icon, required String message}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.grey.shade300, size: 52),
+          const SizedBox(height: 12),
+          Text(message, style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
         ],
       ),
     );

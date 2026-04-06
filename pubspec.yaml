@@ -10,10 +10,13 @@ dependencies:
   cloud_firestore: any
   firebase_core: any
   firebase_auth: any
+  firebase_storage: any
+  file_picker: ^8.1.4
   shared_preferences: ^2.5.2
+  http: ^1.2.0
   flutter:
     sdk: flutter
-  lottie: ^2.6.0 # Tambahkan ini bos
+  lottie: ^2.6.0
 
 dev_dependencies:
   flutter_test:

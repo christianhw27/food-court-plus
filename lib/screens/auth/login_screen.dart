@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _authService = AuthService();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   void _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -157,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 8),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
                           style: const TextStyle(color: AppTheme.textDark),
                           decoration: InputDecoration(
                             filled: true,
@@ -165,7 +166,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             hintText: 'Minimal 8 karakter',
                             hintStyle: TextStyle(color: Colors.grey.shade400),
                             prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
-                            suffixIcon: const Icon(Icons.visibility_off, color: Colors.grey),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,

@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/main_layout.dart';
+import '../screens/seller/seller_home_screen.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -34,7 +35,7 @@ class AuthWrapper extends StatelessWidget {
                 if (role == 'admin') {
                   return const AdminDashboard();
                 } else if (role == 'seller') {
-                  return const SellerDashboard();
+                  return const SellerHomeScreen();
                 } else {
                   return const MainLayout(); // Default for buyer
                 }
@@ -116,16 +117,3 @@ class AdminDashboard extends StatelessWidget {
   }
 }
 
-// Placeholder for Seller Dashboard
-class SellerDashboard extends StatelessWidget {
-  const SellerDashboard({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Seller Dashboard'), actions: [
-        IconButton(icon: const Icon(Icons.logout), onPressed: () => AuthService().signOut()),
-      ]),
-      body: const Center(child: Text('Welcome, Seller!')),
-    );
-  }
-}
