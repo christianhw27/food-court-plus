@@ -14,16 +14,11 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
 
-  // Ini daftar halaman dummy untuk tiap tab
   static const List<Widget> _pages = <Widget>[
     HomeScreen(),
     OrdersScreen(),
-    SavedScreen(),   // <-- Ganti teks dummy jadi ini
+    SavedScreen(),
     ProfileScreen(),
-    Center(child: Text('Halaman Beranda (Dashboard) Nanti Di Sini', style: TextStyle(fontSize: 18))),
-    Center(child: Text('Halaman Order & History Nanti Di Sini', style: TextStyle(fontSize: 18))),
-    Center(child: Text('Halaman Saved/Favorit Nanti Di Sini', style: TextStyle(fontSize: 18))),
-    Center(child: Text('Halaman Profil Nanti Di Sini', style: TextStyle(fontSize: 18))),
   ];
 
   void _onItemTapped(int index) {

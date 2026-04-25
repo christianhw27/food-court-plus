@@ -3,6 +3,7 @@ import '../../core/theme.dart';
 import '../../models/food_model.dart';
 import '../../models/stall_model.dart';
 import '../../services/stall_service.dart';
+import '../../services/saved_service.dart';
 import 'food_detail_screen.dart';
 import 'stall_detail_screen.dart';
 import '../../services/auth_service.dart';
@@ -21,6 +22,12 @@ class _HomeScreenState extends State<HomeScreen> {
   UserModel? _userData;
   final _authService = AuthService();
   final _stallService = StallService();
+  final _savedService = SavedService();
+
+  late final Stream<Set<String>> _savedFoodIdsStream;
+  late final Stream<Set<String>> _savedStallIdsStream;
+  late final Stream<List<FoodModel>> _allFoodsStream;
+  late final Stream<List<StallModel>> _allStallsStream;
 
   String _selectedCategory = 'Semua';
 
@@ -36,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _savedFoodIdsStream = _savedService.savedFoodIdsStream();
+    _savedStallIdsStream = _savedService.savedStallIdsStream();
+    _allFoodsStream = _stallService.getAllFoods().asBroadcastStream();
+    _allStallsStream = _stallService.getAllStalls().asBroadcastStream();
   }
 
   void _loadUserData() async {
@@ -52,6 +63,28 @@ class _HomeScreenState extends State<HomeScreen> {
   String _formatPrice(double price) {
     final str = price.toStringAsFixed(0);
     return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
+  Future<void> _toggleSavedFood(String foodId) async {
+    try {
+      await _savedService.toggleFoodSaved(foodId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan menu. Coba lagi.')),
+      );
+    }
+  }
+
+  Future<void> _toggleSavedStall(String stallId) async {
+    try {
+      await _savedService.toggleStallSaved(stallId);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan stan. Coba lagi.')),
+      );
+    }
   }
 
   @override
@@ -71,20 +104,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _userData != null ? 'Halo, ${_userData!.name}! 👋' : 'Food Court Plus+',
-                              style: const TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                            ),
-                            Text(
-                              'Kantin Pusat UNESA',
-                              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _userData != null ? 'Halo, ${_userData!.name}! 👋' : 'Food Court Plus+',
+                                style: const TextStyle(
+                                    fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Kantin Pusat UNESA',
+                                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 16),
                         Row(
                           children: [
                             GestureDetector(
@@ -158,17 +196,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
-          body: StreamBuilder<List<FoodModel>>(
-            stream: _stallService.getAllFoods(),
-            builder: (context, foodSnapshot) {
-              return StreamBuilder<List<StallModel>>(
-                stream: _stallService.getAllStalls(),
-                builder: (context, stallSnapshot) {
+          body: StreamBuilder<Set<String>>(
+            stream: _savedFoodIdsStream,
+            builder: (context, savedFoodSnapshot) {
+              return StreamBuilder<Set<String>>(
+                stream: _savedStallIdsStream,
+                builder: (context, savedStallSnapshot) {
+                  return StreamBuilder<List<FoodModel>>(
+                    stream: _allFoodsStream,
+                    builder: (context, foodSnapshot) {
+                      return StreamBuilder<List<StallModel>>(
+                        stream: _allStallsStream,
+                        builder: (context, stallSnapshot) {
                   final allFoods = foodSnapshot.data ?? [];
                   final allStalls = stallSnapshot.data ?? [];
+                  final savedFoodIds = savedFoodSnapshot.data ?? <String>{};
+                  final savedStallIds = savedStallSnapshot.data ?? <String>{};
                   final filteredFoods = _filterFoods(allFoods);
-                  final isLoading = foodSnapshot.connectionState == ConnectionState.waiting ||
-                      stallSnapshot.connectionState == ConnectionState.waiting;
+                  final isLoading =
+                      (foodSnapshot.connectionState == ConnectionState.waiting && !foodSnapshot.hasData) ||
+                      (stallSnapshot.connectionState == ConnectionState.waiting && !stallSnapshot.hasData) ||
+                      (savedFoodSnapshot.connectionState == ConnectionState.waiting &&
+                          !savedFoodSnapshot.hasData) ||
+                      (savedStallSnapshot.connectionState == ConnectionState.waiting &&
+                          !savedStallSnapshot.hasData);
 
                   if (isLoading) {
                     return const Center(
@@ -194,7 +245,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: filteredFoods
-                                  .map((food) => _buildFoodCard(food, allStalls))
+                                  .map((food) => _buildFoodCard(
+                                        food,
+                                        allStalls,
+                                        savedFoodIds.contains(food.id),
+                                      ))
                                   .toList(),
                             ),
                           ),
@@ -211,10 +266,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ...allStalls
                               .map((stall) => Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
-                                    child: _buildStallCard(stall),
+                                    child: _buildStallCard(
+                                      stall,
+                                      savedStallIds.contains(stall.id),
+                                    ),
                                   )),
                       ],
                     ),
+                  );
+                        },
+                      );
+                    },
                   );
                 },
               );
@@ -273,7 +335,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFoodCard(FoodModel food, List<StallModel> stalls) {
+  Widget _buildFoodCard(
+    FoodModel food,
+    List<StallModel> stalls,
+    bool isSaved,
+  ) {
     final stallName = stalls.firstWhere(
       (s) => s.id == food.stallId,
       orElse: () => StallModel(
@@ -302,19 +368,42 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Hero(
-              tag: heroTag,
-              child: AppNetworkImage(
-                imageUrl: food.imageUrl,
-                height: 120,
-                width: double.infinity,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                placeholder: Container(
-                  height: 120,
-                  color: const Color(0xFFE2E8F0),
-                  child: const Icon(Icons.fastfood, color: Colors.grey, size: 40),
+            Stack(
+              children: [
+                Hero(
+                  tag: heroTag,
+                  child: AppNetworkImage(
+                    imageUrl: food.imageUrl,
+                    height: 120,
+                    width: double.infinity,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    placeholder: Container(
+                      height: 120,
+                      color: const Color(0xFFE2E8F0),
+                      child: const Icon(Icons.fastfood, color: Colors.grey, size: 40),
+                    ),
+                  ),
                 ),
-              ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () => _toggleSavedFood(food.id),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isSaved ? Icons.favorite : Icons.favorite_outline,
+                        color: AppTheme.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(12),
@@ -361,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStallCard(StallModel stall) {
+  Widget _buildStallCard(StallModel stall, bool isSaved) {
     final heroTag = 'stall_${stall.id}';
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -430,6 +519,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      GestureDetector(
+                        onTap: () => _toggleSavedStall(stall.id),
+                        child: Icon(
+                          isSaved ? Icons.favorite : Icons.favorite_outline,
+                          color: AppTheme.primaryColor,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       if (stall.rating > 0)
                         Row(
                           children: [

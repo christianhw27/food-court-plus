@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/food_model.dart';
 import '../../models/stall_model.dart';
+import '../../services/saved_service.dart';
 import '../../services/stall_service.dart';
 import '../../widgets/app_network_image.dart';
 import 'food_detail_screen.dart';
@@ -16,10 +17,22 @@ class StallDetailScreen extends StatelessWidget {
     return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
+  Future<void> _toggleSavedStall(BuildContext context, SavedService savedService) async {
+    try {
+      await savedService.toggleStallSaved(stall.id);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan stan. Coba lagi.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final heroTag = 'stall_${stall.id}';
     final stallService = StallService();
+    final savedService = SavedService();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -35,9 +48,18 @@ class StallDetailScreen extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.favorite_border, color: Colors.white),
-                onPressed: () {},
+              StreamBuilder<Set<String>>(
+                stream: savedService.savedStallIdsStream(),
+                builder: (context, snapshot) {
+                  final isSaved = (snapshot.data ?? <String>{}).contains(stall.id);
+                  return IconButton(
+                    icon: Icon(
+                      isSaved ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => _toggleSavedStall(context, savedService),
+                  );
+                },
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(

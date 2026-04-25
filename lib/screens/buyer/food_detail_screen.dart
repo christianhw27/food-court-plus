@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../models/food_model.dart';
+import '../../services/saved_service.dart';
 import '../../widgets/app_network_image.dart';
 
 class FoodDetailScreen extends StatelessWidget {
@@ -18,9 +19,21 @@ class FoodDetailScreen extends StatelessWidget {
     return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
+  Future<void> _toggleSavedFood(BuildContext context, SavedService savedService) async {
+    try {
+      await savedService.toggleFoodSaved(food.id);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menyimpan menu. Coba lagi.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final heroTag = 'food_${food.id}';
+    final savedService = SavedService();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -69,14 +82,26 @@ class FoodDetailScreen extends StatelessWidget {
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
-              ),
-              child: const Icon(Icons.favorite_outline, color: AppTheme.primaryColor),
+            child: StreamBuilder<Set<String>>(
+              stream: savedService.savedFoodIdsStream(),
+              builder: (context, snapshot) {
+                final isSaved = (snapshot.data ?? <String>{}).contains(food.id);
+                return GestureDetector(
+                  onTap: () => _toggleSavedFood(context, savedService),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+                    ),
+                    child: Icon(
+                      isSaved ? Icons.favorite : Icons.favorite_outline,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 

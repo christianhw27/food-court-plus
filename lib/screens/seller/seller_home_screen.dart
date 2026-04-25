@@ -48,6 +48,37 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
     setState(() => _stall = _stall!.copyWith(isOpen: value));
   }
 
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Keluar'),
+          content: const Text('Yakin mau keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      await _authService.signOut();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -334,7 +365,7 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
         ),
         icon: Icon(Icons.logout, color: Colors.grey.shade600),
         label: Text('Keluar', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-        onPressed: () => _authService.signOut(),
+        onPressed: _confirmLogout,
       ),
     );
   }

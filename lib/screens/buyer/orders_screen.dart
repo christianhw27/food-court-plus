@@ -137,13 +137,23 @@ class OrdersScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.storefront, size: 20, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text(stallName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.storefront, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        stallName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(

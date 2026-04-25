@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/setup_password_screen.dart';
 import '../screens/main_layout.dart';
 import '../screens/seller/seller_home_screen.dart';
 
@@ -21,28 +22,40 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          // User is logged in, now check role
-          return FutureBuilder<UserModel?>(
-            future: authService.currentUserData,
-            builder: (context, userSnapshot) {
-              if (userSnapshot.connectionState == ConnectionState.waiting) {
+          return FutureBuilder<bool>(
+            future: authService.needsPasswordSetupForCurrentUser(),
+            builder: (context, passwordSnapshot) {
+              if (passwordSnapshot.connectionState == ConnectionState.waiting) {
                 return const Scaffold(body: Center(child: CircularProgressIndicator()));
               }
-
-              if (userSnapshot.hasData && userSnapshot.data != null) {
-                String role = userSnapshot.data!.role;
-
-                if (role == 'admin') {
-                  return const AdminDashboard();
-                } else if (role == 'seller') {
-                  return const SellerHomeScreen();
-                } else {
-                  return const MainLayout(); // Default for buyer
-                }
+              if (passwordSnapshot.data == true) {
+                return const SetupPasswordScreen();
               }
 
-              // Fallback if user data not found in Firestore
-              return const LoginScreen();
+              // User is logged in, now check role
+              return FutureBuilder<UserModel?>(
+                future: authService.currentUserData,
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+
+                  if (userSnapshot.hasData && userSnapshot.data != null) {
+                    String role = userSnapshot.data!.role;
+
+                    if (role == 'admin') {
+                      return const AdminDashboard();
+                    } else if (role == 'seller') {
+                      return const SellerHomeScreen();
+                    } else {
+                      return const MainLayout(); // Default for buyer
+                    }
+                  }
+
+                  // Fallback if user data not found in Firestore
+                  return const LoginScreen();
+                },
+              );
             },
           );
         }
@@ -58,6 +71,37 @@ class AuthWrapper extends StatelessWidget {
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
+  Future<void> _confirmLogout(BuildContext context, AuthService authService) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Keluar'),
+          content: const Text('Yakin mau keluar dari akun ini?'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Keluar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      await authService.signOut();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
@@ -69,7 +113,7 @@ class AdminDashboard extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => authService.signOut(),
+            onPressed: () => _confirmLogout(context, authService),
           ),
         ],
       ),

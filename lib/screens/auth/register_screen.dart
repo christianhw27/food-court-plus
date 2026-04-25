@@ -44,7 +44,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(
+            content: Text(
+              _authService.mapFirebaseAuthError(
+                e,
+                fallback: 'Registrasi gagal. Coba lagi.',
+              ),
+            ),
+          ),
         );
       }
     } finally {

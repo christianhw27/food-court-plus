@@ -96,11 +96,19 @@ class StallService {
     await _firestore.collection('foods').doc(foodId).update({'isAvailable': isAvailable});
   }
 
-  /// Stream semua menu (untuk halaman Home Buyer)
+  /// Stream semua menu yang tersedia (untuk halaman Home Buyer)
   Stream<List<FoodModel>> getAllFoods() {
     return _firestore
         .collection('foods')
         .where('isAvailable', isEqualTo: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => FoodModel.fromDocument(d)).toList());
+  }
+
+  /// Stream semua menu tanpa filter (untuk halaman Saved)
+  Stream<List<FoodModel>> getAllFoodsUnfiltered() {
+    return _firestore
+        .collection('foods')
         .snapshots()
         .map((snap) => snap.docs.map((d) => FoodModel.fromDocument(d)).toList());
   }
