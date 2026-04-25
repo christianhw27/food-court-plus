@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../services/auth_service.dart';
+import '../../core/app_notification.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -16,9 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   void _resetPassword() async {
     if (_emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tolong isi email kamu terlebih dahulu')),
-      );
+      AppNotification.showSuccess(context, 'Tolong isi email kamu terlebih dahulu');
       return;
     }
 
@@ -27,27 +26,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       await _authService.sendPasswordResetEmail(_emailController.text.trim());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email verifikasi untuk mereset sandi telah dikirim. Cek inbox/spam kamu!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        AppNotification.showSuccess(context, 'Email verifikasi untuk mereset sandi telah dikirim. Cek inbox/spam kamu!');
         Navigator.pop(context); // Kembali ke halaman login
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _authService.mapFirebaseAuthError(
+        AppNotification.showError(context, _authService.mapFirebaseAuthError(
                 e,
                 fallback: 'Gagal mengirim email verifikasi.',
-              ),
-            ),
-          ),
-        );
+              ),);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

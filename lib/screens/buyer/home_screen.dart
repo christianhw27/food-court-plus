@@ -10,6 +10,7 @@ import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
 import '../../widgets/app_network_image.dart';
 import 'cart_screen.dart';
+import '../../core/app_notification.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,9 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _savedService.toggleFoodSaved(foodId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan menu. Coba lagi.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menyimpan menu. Coba lagi.');
     }
   }
 
@@ -81,9 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _savedService.toggleStallSaved(stallId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan stan. Coba lagi.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menyimpan stan. Coba lagi.');
     }
   }
 

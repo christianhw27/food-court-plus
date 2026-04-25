@@ -6,6 +6,7 @@ import '../../services/saved_service.dart';
 import '../../services/stall_service.dart';
 import '../../widgets/app_network_image.dart';
 import 'food_detail_screen.dart';
+import '../../core/app_notification.dart';
 
 class StallDetailScreen extends StatelessWidget {
   final StallModel stall;
@@ -22,9 +23,7 @@ class StallDetailScreen extends StatelessWidget {
       await savedService.toggleStallSaved(stall.id);
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan stan. Coba lagi.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menyimpan stan. Coba lagi.');
     }
   }
 

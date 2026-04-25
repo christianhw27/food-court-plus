@@ -8,6 +8,7 @@ import '../../services/stall_service.dart';
 import '../../widgets/app_network_image.dart';
 import 'food_detail_screen.dart';
 import 'stall_detail_screen.dart';
+import '../../core/app_notification.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -73,9 +74,7 @@ class _SavedScreenState extends State<SavedScreen> {
       await _savedService.toggleFoodSaved(foodId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menghapus menu tersimpan.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menghapus menu tersimpan.');
     }
   }
 
@@ -84,9 +83,7 @@ class _SavedScreenState extends State<SavedScreen> {
       await _savedService.toggleStallSaved(stallId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menghapus stan tersimpan.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menghapus stan tersimpan.');
     }
   }
 

@@ -3,6 +3,7 @@ import '../../core/theme.dart';
 import '../../services/auth_service.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../core/app_notification.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,9 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tolong isi email dan password')),
-      );
+      AppNotification.showSuccess(context, 'Tolong isi email dan password');
       return;
     }
 
@@ -36,16 +35,10 @@ class _LoginScreenState extends State<LoginScreen> {
       // AuthWrapper akan otomatis mengalihkan setelah state berubah
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _authService.mapFirebaseAuthError(
+        AppNotification.showError(context, _authService.mapFirebaseAuthError(
                 e,
                 fallback: 'Login gagal. Coba lagi.',
-              ),
-            ),
-          ),
-        );
+              ),);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -59,16 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
       await _authService.signInWithGoogle();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _authService.mapFirebaseAuthError(
+        AppNotification.showError(context, _authService.mapFirebaseAuthError(
                 e,
                 fallback: 'Login Google gagal. Coba lagi.',
-              ),
-            ),
-          ),
-        );
+              ),);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

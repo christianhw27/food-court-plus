@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/auth_wrapper.dart';
+import '../../core/app_notification.dart';
 
 class SetupPasswordScreen extends StatefulWidget {
   const SetupPasswordScreen({super.key});
@@ -33,14 +34,16 @@ class _SetupPasswordScreenState extends State<SetupPasswordScreen> {
     if (password.length < 8) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Password minimal 8 karakter.')));
+      );
+      AppNotification.showInfo(context, 'Password minimal 8 karakter.');
       return;
     }
 
     if (password != confirmPassword) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Konfirmasi password tidak sama.')));
+      );
+      AppNotification.showInfo(context, 'Konfirmasi password tidak sama.');
       return;
     }
 
@@ -50,9 +53,7 @@ class _SetupPasswordScreenState extends State<SetupPasswordScreen> {
       await _authService.setupPasswordForCurrentUser(password);
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password berhasil disimpan.')),
-      );
+      AppNotification.showSuccess(context, 'Password berhasil disimpan.');
 
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthWrapper()),
@@ -60,16 +61,10 @@ class _SetupPasswordScreenState extends State<SetupPasswordScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _authService.mapFirebaseAuthError(
+      AppNotification.showError(context, _authService.mapFirebaseAuthError(
               e,
               fallback: 'Gagal menyimpan password. Coba lagi.',
-            ),
-          ),
-        ),
-      );
+            ),);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

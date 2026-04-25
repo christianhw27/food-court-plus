@@ -4,6 +4,7 @@ import '../../models/food_model.dart';
 import '../../models/stall_model.dart';
 import '../../services/stall_service.dart';
 import 'seller_add_edit_food_screen.dart';
+import '../../core/app_notification.dart';
 
 class SellerManageMenuScreen extends StatelessWidget {
   final StallModel stall;
@@ -229,9 +230,7 @@ class SellerManageMenuScreen extends StatelessWidget {
     if (confirm == true) {
       await _stallService.deleteFood(food.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Menu berhasil dihapus'), backgroundColor: Colors.green),
-        );
+        AppNotification.showSuccess(context, 'Menu berhasil dihapus');
       }
     }
   }

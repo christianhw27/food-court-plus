@@ -1,14 +1,67 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../models/order_model.dart';
+import '../../services/order_service.dart';
+import '../../services/auth_service.dart';
 
-class OrdersScreen extends StatelessWidget {
+class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
 
   @override
+  State<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends State<OrdersScreen> {
+  final OrderService _orderService = OrderService();
+  final AuthService _authService = AuthService();
+  String? _buyerUid;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService.currentUserData.then((user) {
+      if (mounted && user != null) {
+        setState(() => _buyerUid = user.uid);
+      }
+    });
+  }
+
+  String _formatPrice(double price) {
+    final str = price.toStringAsFixed(0);
+    return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Menunggu Pembayaran': return Colors.orange;
+      case 'Sedang Disiapkan': return Colors.blue;
+      case 'Selesai': return Colors.green;
+      case 'Dibatalkan': return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'Menunggu Pembayaran': return Icons.pending_actions;
+      case 'Sedang Disiapkan': return Icons.soup_kitchen;
+      case 'Selesai': return Icons.check_circle;
+      case 'Dibatalkan': return Icons.cancel;
+      default: return Icons.info;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Kita pakai DefaultTabController buat bikin tab atas yang bisa di-swipe
+    if (_buyerUid == null) {
+      return const Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+      );
+    }
+
     return DefaultTabController(
-      length: 2, // Ada 2 Tab
+      length: 2,
       child: Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
@@ -30,80 +83,70 @@ class OrdersScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            // --- TAB 1: BERLANGSUNG ---
-            ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                _buildOrderCard(
-                  stallName: 'Nasi Campur Khas Ngawi',
-                  orderId: '#FCP-09812',
-                  date: 'Hari ini, 12:30 WIB',
-                  items: '2x Ayam Geprek, 1x Es Teh Jumbo',
-                  price: 'Rp 34.000',
-                  status: 'Sedang Disiapkan',
-                  statusColor: Colors.blue,
-                  icon: Icons.soup_kitchen,
-                  actionButton: 'Lihat QR Antrean',
-                  isActionPrimary: true,
-                ),
-                const SizedBox(height: 16),
-                _buildOrderCard(
-                  stallName: 'Warung Kopi Mr. Ironi',
-                  orderId: '#FCP-09813',
-                  date: 'Hari ini, 12:45 WIB',
-                  items: '1x Kopi Susu Gula Aren',
-                  price: 'Rp 12.000',
-                  status: 'Menunggu Pembayaran',
-                  statusColor: Colors.orange,
-                  icon: Icons.pending_actions,
-                  actionButton: 'Bayar Sekarang',
-                  isActionPrimary: true,
-                ),
-                const SizedBox(height: 80), // Padding bawah buat bottom nav
-              ],
-            ),
+        body: StreamBuilder<List<OrderModel>>(
+          stream: _orderService.getBuyerOrders(_buyerUid!),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+            }
 
-            // --- TAB 2: RIWAYAT ---
-            ListView(
-              padding: const EdgeInsets.all(20),
+            final orders = snapshot.data ?? [];
+            final ongoingOrders = orders.where((o) => o.status != 'Selesai' && o.status != 'Dibatalkan').toList();
+            final historyOrders = orders.where((o) => o.status == 'Selesai' || o.status == 'Dibatalkan').toList();
+
+            return TabBarView(
               children: [
-                _buildOrderCard(
-                  stallName: 'Geprek Si Imut',
-                  orderId: '#FCP-08701',
-                  date: 'Kemarin, 13:00 WIB',
-                  items: '1x Nasi Campur Spesial',
-                  price: 'Rp 18.000',
-                  status: 'Selesai',
-                  statusColor: Colors.green,
-                  icon: Icons.check_circle,
-                  actionButton: 'Pesan Lagi',
-                  isActionPrimary: false,
-                ),
-                const SizedBox(height: 16),
-                _buildOrderCard(
-                  stallName: 'Mas Amba Nasi Goreng',
-                  orderId: '#FCP-08655',
-                  date: '02 Feb 2026, 11:15 WIB',
-                  items: '1x Nasi Goreng, 1x Es Jeruk',
-                  price: 'Rp 17.000',
-                  status: 'Dibatalkan',
-                  statusColor: Colors.red,
-                  icon: Icons.cancel,
-                  actionButton: 'Cari Menu Lain',
-                  isActionPrimary: false,
-                ),
-                const SizedBox(height: 80), // Padding bawah buat bottom nav
+                _buildOrderList(ongoingOrders, isEmptyOngoing: true),
+                _buildOrderList(historyOrders, isEmptyOngoing: false),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
-  // --- WIDGET BANTUAN UNTUK KARTU PESANAN ---
+  Widget _buildOrderList(List<OrderModel> orders, {required bool isEmptyOngoing}) {
+    if (orders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.receipt_long, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              isEmptyOngoing ? 'Belum ada pesanan berlangsung' : 'Belum ada riwayat pesanan',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
+      itemCount: orders.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        final itemsStr = order.items.map((i) => '${i['quantity']}x ${i['name']}').join(', ');
+
+        return _buildOrderCard(
+          stallName: order.stallName,
+          orderId: order.id.substring(0, 8).toUpperCase(),
+          date: '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+          items: itemsStr,
+          price: _formatPrice(order.totalAmount),
+          status: order.status,
+          statusColor: _getStatusColor(order.status),
+          icon: _getStatusIcon(order.status),
+          actionButton: order.status == 'Selesai' ? 'Pesan Lagi' : 'Lihat Detail',
+          isActionPrimary: order.status != 'Selesai' && order.status != 'Dibatalkan',
+        );
+      },
+    );
+  }
+
   Widget _buildOrderCard({
     required String stallName,
     required String orderId,
@@ -133,7 +176,6 @@ class OrdersScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Kartu: Nama Stan & Status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -174,20 +216,16 @@ class OrdersScreen extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1, color: Color(0xFFEEEEEE)),
           ),
-          
-          // Isi Pesanan
           Text(items, style: const TextStyle(fontSize: 14, color: AppTheme.textDark)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$orderId • $date', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+              Text('#$orderId • $date', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
               Text(price, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
             ],
           ),
           const SizedBox(height: 16),
-
-          // Tombol Aksi
           SizedBox(
             width: double.infinity,
             height: 40,

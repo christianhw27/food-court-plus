@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/stall_service.dart';
 import 'seller_stall_profile_screen.dart';
 import 'seller_manage_menu_screen.dart';
+import 'seller_orders_screen.dart';
 
 class SellerHomeScreen extends StatefulWidget {
   const SellerHomeScreen({super.key});
@@ -187,6 +188,16 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
+                _buildQuickAction(
+                  icon: Icons.receipt_long,
+                  label: 'Pesanan',
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => SellerOrdersScreen(stallId: _stall!.id)));
+                  },
+                ),
+                const SizedBox(width: 12),
                 _buildQuickAction(
                   icon: Icons.restaurant_menu_rounded,
                   label: 'Kelola Menu',

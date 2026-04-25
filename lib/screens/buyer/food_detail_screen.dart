@@ -3,6 +3,8 @@ import '../../core/theme.dart';
 import '../../models/food_model.dart';
 import '../../services/saved_service.dart';
 import '../../widgets/app_network_image.dart';
+import '../../core/app_notification.dart';
+import '../../services/cart_service.dart';
 
 class FoodDetailScreen extends StatelessWidget {
   final FoodModel food;
@@ -24,9 +26,7 @@ class FoodDetailScreen extends StatelessWidget {
       await savedService.toggleFoodSaved(food.id);
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal menyimpan menu. Coba lagi.')),
-      );
+      AppNotification.showSuccess(context, 'Gagal menyimpan menu. Coba lagi.');
     }
   }
 
@@ -193,27 +193,30 @@ class FoodDetailScreen extends StatelessWidget {
 
                   const Spacer(),
 
-                  // Info: fitur order belum tersedia
-                  Container(
+                  // Add to Cart Button
+                  SizedBox(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.orange.withValues(alpha: 0.25)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Fitur pemesanan akan segera hadir. Saat ini kamu hanya bisa melihat katalog.',
-                            style: TextStyle(
-                                color: Colors.orange.shade700, fontSize: 13, height: 1.4),
-                          ),
-                        ),
-                      ],
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: food.isAvailable ? AppTheme.primaryColor : Colors.grey,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: food.isAvailable
+                          ? () {
+                              try {
+                                CartService().addToCart(food, stallName);
+                                AppNotification.showSuccess(context, '${food.name} ditambahkan ke keranjang');
+                              } catch (e) {
+                                AppNotification.showError(context, e.toString().replaceAll('Exception: ', ''));
+                              }
+                            }
+                          : null,
+                      icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                      label: Text(
+                        food.isAvailable ? 'Tambah ke Keranjang' : 'Habis Terjual',
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

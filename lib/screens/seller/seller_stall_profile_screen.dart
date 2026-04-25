@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../models/stall_model.dart';
 import '../../services/stall_service.dart';
 import '../../services/image_service.dart';
+import '../../core/app_notification.dart';
 
 class SellerStallProfileScreen extends StatefulWidget {
   final StallModel? stall;
@@ -58,19 +59,13 @@ class _SellerStallProfileScreenState extends State<SellerStallProfileScreen> {
       final result = await _imageService.pickImage();
       if (result != null && mounted) {
         setState(() => _pickedImageBytes = result.bytes);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Foto "${result.name}" berhasil dipilih ✅'), backgroundColor: Colors.green),
-        );
+        AppNotification.showSuccess(context, 'Foto "${result.name}" berhasil dipilih ✅');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak ada foto yang dipilih.')),
-        );
+        AppNotification.showSuccess(context, 'Tidak ada foto yang dipilih.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memilih foto: $e'), backgroundColor: Colors.red),
-        );
+        AppNotification.showError(context, 'Gagal memilih foto: $e');
       }
     }
   }
@@ -102,9 +97,7 @@ class _SellerStallProfileScreenState extends State<SellerStallProfileScreen> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Stan berhasil didaftarkan! 🎉'), backgroundColor: Colors.green),
-          );
+          AppNotification.showSuccess(context, 'Stan berhasil didaftarkan! 🎉');
           Navigator.pop(context);
         }
       } else {
@@ -124,21 +117,13 @@ class _SellerStallProfileScreenState extends State<SellerStallProfileScreen> {
           'imageUrl': imageUrl,
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil stan berhasil diperbarui!'), backgroundColor: Colors.green),
-          );
+          AppNotification.showSuccess(context, 'Profil stan berhasil diperbarui!');
           Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyimpan: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 6),
-          ),
-        );
+        AppNotification.showError(context, 'Gagal menyimpan: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

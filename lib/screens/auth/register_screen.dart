@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../services/auth_service.dart';
+import '../../core/app_notification.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,9 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tolong isi semua field')),
-      );
+      AppNotification.showSuccess(context, 'Tolong isi semua field');
       return;
     }
 
@@ -37,22 +36,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (mounted) {
         Navigator.pop(context); // Kembali ke Login setelah sukses
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrasi Berhasil! Silakan Login')),
-        );
+        AppNotification.showSuccess(context, 'Registrasi Berhasil! Silakan Login');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _authService.mapFirebaseAuthError(
+        AppNotification.showError(context, _authService.mapFirebaseAuthError(
                 e,
                 fallback: 'Registrasi gagal. Coba lagi.',
-              ),
-            ),
-          ),
-        );
+              ),);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

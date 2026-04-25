@@ -4,6 +4,7 @@ import '../../core/theme.dart';
 import '../../models/food_model.dart';
 import '../../services/stall_service.dart';
 import '../../services/image_service.dart';
+import '../../core/app_notification.dart';
 
 class SellerAddEditFoodScreen extends StatefulWidget {
   final String stallId;
@@ -60,19 +61,13 @@ class _SellerAddEditFoodScreenState extends State<SellerAddEditFoodScreen> {
       final result = await _imageService.pickImage();
       if (result != null && mounted) {
         setState(() => _pickedImageBytes = result.bytes);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Foto "${result.name}" berhasil dipilih ✅'), backgroundColor: Colors.green),
-        );
+        AppNotification.showSuccess(context, 'Foto "${result.name}" berhasil dipilih ✅');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak ada foto yang dipilih.')),
-        );
+        AppNotification.showSuccess(context, 'Tidak ada foto yang dipilih.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memilih foto: $e'), backgroundColor: Colors.red),
-        );
+        AppNotification.showSuccess(context, 'Gagal memilih foto: $e');
       }
     }
   }
@@ -110,9 +105,7 @@ class _SellerAddEditFoodScreenState extends State<SellerAddEditFoodScreen> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Menu berhasil ditambahkan! 🎉'), backgroundColor: Colors.green),
-          );
+          AppNotification.showSuccess(context, 'Menu berhasil ditambahkan! 🎉');
           Navigator.pop(context);
         }
       } else {
@@ -133,15 +126,13 @@ class _SellerAddEditFoodScreenState extends State<SellerAddEditFoodScreen> {
           'imageUrl': imageUrl,
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Menu berhasil diperbarui!'), backgroundColor: Colors.green),
-          );
+          AppNotification.showSuccess(context, 'Menu berhasil diperbarui!');
           Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        AppNotification.showError(context, 'Error: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

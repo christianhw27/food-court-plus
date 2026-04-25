@@ -6,6 +6,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/setup_password_screen.dart';
 import '../screens/main_layout.dart';
 import '../screens/seller/seller_home_screen.dart';
+import '../core/app_notification.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -140,9 +141,7 @@ class AdminDashboard extends StatelessWidget {
                   onSelected: (newRole) async {
                     await authService.updateUserRole(user.uid, newRole);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Role ${user.name} update to $newRole')),
-                      );
+                      AppNotification.showSuccess(context, 'Role ${user.name} update to $newRole');
                     }
                   },
                   itemBuilder: (context) => [
