@@ -5,7 +5,7 @@ import 'core/theme.dart';
 import 'firebase_options.dart';
 import 'screens/onboarding_screen.dart'; // Import onboarding
 import 'widgets/auth_wrapper.dart';
-
+#coba coba tes tes
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
