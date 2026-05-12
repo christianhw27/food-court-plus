@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/order_service.dart';
 import '../../models/user_model.dart';
+import '../../models/order_model.dart';
+import 'edit_profile_screen.dart';
+import 'notification_settings_screen.dart';
+import 'help_center_screen.dart';
+import 'about_screen.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -12,6 +19,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _userData;
   final _authService = AuthService();
+  final _orderService = OrderService();
 
   @override
   void initState() {
@@ -26,6 +34,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _userData = data;
       });
     }
+  }
+
+  String _formatPrice(double price) {
+    final str = price.toStringAsFixed(0);
+    return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
   }
 
   Future<void> _confirmLogout() async {
@@ -57,6 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (shouldLogout == true) {
       await _authService.signOut();
     }
+  }
+
+  void _navigateTo(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -114,56 +131,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
 
-            // --- KARTU STATISTIK BUDGET ---
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.3)),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.account_balance_wallet, color: Color(0xFFFBBF24)),
-                          SizedBox(height: 12),
-                          Text('Pengeluaran Bulan Ini', style: TextStyle(fontSize: 12, color: AppTheme.textDark)),
-                          SizedBox(height: 4),
-                          Text('Rp 345.000', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.fastfood, color: AppTheme.primaryColor),
-                          SizedBox(height: 12),
-                          Text('Total Pesanan', style: TextStyle(fontSize: 12, color: AppTheme.textDark)),
-                          SizedBox(height: 4),
-                          Text('24 Pesanan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // --- KARTU STATISTIK BUDGET (REAL DATA) ---
+            _buildStatsSection(),
             const SizedBox(height: 8),
 
             // --- MENU PENGATURAN ---
@@ -171,11 +140,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white,
               child: Column(
                 children: [
-                  _buildMenuTile(Icons.person_outline, 'Edit Profil', true),
-                  _buildMenuTile(Icons.track_changes, 'Target Budget Harian', true),
-                  _buildMenuTile(Icons.notifications_none, 'Notifikasi', true),
-                  _buildMenuTile(Icons.help_outline, 'Pusat Bantuan', true),
-                  _buildMenuTile(Icons.info_outline, 'Tentang Aplikasi', false),
+                  _buildMenuTile(Icons.person_outline, 'Edit Profil', true, () {
+                    if (_userData != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => EditProfileScreen(userData: _userData!)),
+                      ).then((result) {
+                        if (result == true) _loadUserData();
+                      });
+                    }
+                  }),
+                  _buildMenuTile(Icons.track_changes, 'Target Budget Harian', true, () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Fitur ini segera hadir!'), backgroundColor: Colors.orange),
+                    );
+                  }),
+                  _buildMenuTile(Icons.notifications_none, 'Notifikasi', true, () {
+                    _navigateTo(const NotificationSettingsScreen());
+                  }),
+                  _buildMenuTile(Icons.help_outline, 'Pusat Bantuan', true, () {
+                    _navigateTo(const HelpCenterScreen());
+                  }),
+                  _buildMenuTile(Icons.info_outline, 'Tentang Aplikasi', false, () {
+                    _navigateTo(const AboutScreen());
+                  }),
                 ],
               ),
             ),
@@ -207,8 +195,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // --- STATS SECTION WITH REAL DATA ---
+  Widget _buildStatsSection() {
+    if (_userData == null) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.all(20),
+        child: const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+      );
+    }
+
+    return StreamBuilder<List<OrderModel>>(
+      stream: _orderService.getBuyerOrders(_userData!.uid),
+      builder: (context, snapshot) {
+        final orders = snapshot.data ?? [];
+
+        // Calculate monthly spending from completed/paid orders
+        final now = DateTime.now();
+        final monthlyOrders = orders.where((o) =>
+            o.createdAt.month == now.month &&
+            o.createdAt.year == now.year &&
+            (o.status == 'Selesai' || o.status == 'Sedang Disiapkan'),
+        ).toList();
+        final monthlySpending = monthlyOrders.fold<double>(0, (sum, o) => sum + o.totalAmount);
+
+        // Total completed orders (all time)
+        final totalOrders = orders.where((o) => o.status != 'Dibatalkan').length;
+
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFBBF24).withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.account_balance_wallet, color: Color(0xFFFBBF24)),
+                      const SizedBox(height: 12),
+                      const Text('Pengeluaran Bulan Ini', style: TextStyle(fontSize: 12, color: AppTheme.textDark)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatPrice(monthlySpending),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.fastfood, color: AppTheme.primaryColor),
+                      const SizedBox(height: 12),
+                      const Text('Total Pesanan', style: TextStyle(fontSize: 12, color: AppTheme.textDark)),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$totalOrders Pesanan',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // --- WIDGET BANTUAN UNTUK LIST MENU ---
-  Widget _buildMenuTile(IconData icon, String title, bool showDivider) {
+  Widget _buildMenuTile(IconData icon, String title, bool showDivider, VoidCallback onTap) {
     return Column(
       children: [
         ListTile(
@@ -219,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-          onTap: () {},
+          onTap: onTap,
         ),
         if (showDivider) const Divider(height: 1, indent: 60, color: Color(0xFFEEEEEE)),
       ],

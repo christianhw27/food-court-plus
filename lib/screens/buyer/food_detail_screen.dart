@@ -6,7 +6,7 @@ import '../../widgets/app_network_image.dart';
 import '../../core/app_notification.dart';
 import '../../services/cart_service.dart';
 
-class FoodDetailScreen extends StatelessWidget {
+class FoodDetailScreen extends StatefulWidget {
   final FoodModel food;
   final String stallName;
 
@@ -16,6 +16,13 @@ class FoodDetailScreen extends StatelessWidget {
     required this.stallName,
   });
 
+  @override
+  State<FoodDetailScreen> createState() => _FoodDetailScreenState();
+}
+
+class _FoodDetailScreenState extends State<FoodDetailScreen> {
+  int _quantity = 1;
+
   String _formatPrice(double price) {
     final str = price.toStringAsFixed(0);
     return 'Rp ${str.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
@@ -23,7 +30,7 @@ class FoodDetailScreen extends StatelessWidget {
 
   Future<void> _toggleSavedFood(BuildContext context, SavedService savedService) async {
     try {
-      await savedService.toggleFoodSaved(food.id);
+      await savedService.toggleFoodSaved(widget.food.id);
     } catch (_) {
       if (!context.mounted) return;
       AppNotification.showSuccess(context, 'Gagal menyimpan menu. Coba lagi.');
@@ -32,6 +39,8 @@ class FoodDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final food = widget.food;
+    final stallName = widget.stallName;
     final heroTag = 'food_${food.id}';
     final savedService = SavedService();
 
@@ -193,6 +202,54 @@ class FoodDetailScreen extends StatelessWidget {
 
                   const Spacer(),
 
+                  // Quantity Selector
+                  if (food.isAvailable) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Jumlah', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (_quantity > 1) {
+                                  setState(() => _quantity--);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _quantity > 1 ? Colors.white : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: _quantity > 1 ? AppTheme.primaryColor : Colors.grey.shade300),
+                                ),
+                                child: Icon(Icons.remove, size: 20, color: _quantity > 1 ? AppTheme.primaryColor : Colors.grey),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 40,
+                              child: Text('$_quantity', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _quantity++);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.add, size: 20, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+
                   // Add to Cart Button
                   SizedBox(
                     width: double.infinity,
@@ -205,8 +262,9 @@ class FoodDetailScreen extends StatelessWidget {
                       onPressed: food.isAvailable
                           ? () {
                               try {
-                                CartService().addToCart(food, stallName);
-                                AppNotification.showSuccess(context, '${food.name} ditambahkan ke keranjang');
+                                CartService().addToCart(food, stallName, quantity: _quantity);
+                                AppNotification.showSuccess(context, '${food.name} sebanyak $_quantity ditambahkan ke keranjang');
+                                Navigator.pop(context); // Optional: close detail screen after adding
                               } catch (e) {
                                 AppNotification.showError(context, e.toString().replaceAll('Exception: ', ''));
                               }
@@ -214,8 +272,10 @@ class FoodDetailScreen extends StatelessWidget {
                           : null,
                       icon: const Icon(Icons.shopping_cart, color: Colors.white),
                       label: Text(
-                        food.isAvailable ? 'Tambah ke Keranjang' : 'Habis Terjual',
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        food.isAvailable 
+                            ? 'Tambah $_quantity ke Keranjang • ${_formatPrice(food.price * _quantity)}' 
+                            : 'Habis Terjual',
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),

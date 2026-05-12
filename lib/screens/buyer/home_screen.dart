@@ -24,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _authService = AuthService();
   final _stallService = StallService();
   final _savedService = SavedService();
+  final _searchController = TextEditingController();
 
   late final Stream<Set<String>> _savedFoodIdsStream;
   late final Stream<Set<String>> _savedStallIdsStream;
@@ -31,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final Stream<List<StallModel>> _allStallsStream;
 
   String _selectedCategory = 'Semua';
+  String _searchQuery = '';
 
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Semua', 'icon': Icons.restaurant_menu},
@@ -55,10 +57,30 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _userData = data);
   }
 
-  // Filter makanan berdasarkan kategori yang dipilih
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Filter makanan berdasarkan kategori dan pencarian
   List<FoodModel> _filterFoods(List<FoodModel> foods) {
-    if (_selectedCategory == 'Semua') return foods;
-    return foods.where((f) => f.category == _selectedCategory).toList();
+    var filtered = foods;
+    if (_selectedCategory != 'Semua') {
+      filtered = filtered.where((f) => f.category == _selectedCategory).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filtered = filtered.where((f) => f.name.toLowerCase().contains(q)).toList();
+    }
+    return filtered;
+  }
+
+  // Filter stalls berdasarkan pencarian
+  List<StallModel> _filterStalls(List<StallModel> stalls) {
+    if (_searchQuery.isEmpty) return stalls;
+    final q = _searchQuery.toLowerCase();
+    return stalls.where((s) => s.name.toLowerCase().contains(q) || s.category.toLowerCase().contains(q)).toList();
   }
 
   String _formatPrice(double price) {
@@ -132,10 +154,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const CircleAvatar(
-                              radius: 20,
-                              backgroundColor: Color(0xFFFEEBC8),
-                              child: Icon(Icons.notifications_outlined, color: AppTheme.primaryColor),
+                            GestureDetector(
+                              onTap: () {
+                                AppNotification.showSuccess(context, 'Belum ada notifikasi baru');
+                              },
+                              child: const CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Color(0xFFFEEBC8),
+                                child: Icon(Icons.notifications_outlined, color: AppTheme.primaryColor),
+                              ),
                             ),
                           ],
                         ),
@@ -145,17 +172,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // --- SEARCH BAR ---
                     TextField(
+                      controller: _searchController,
+                      onChanged: (value) => setState(() => _searchQuery = value.trim()),
                       decoration: InputDecoration(
                         hintText: 'Cari makanan, minuman, stan...',
                         prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        suffixIcon: Container(
-                          margin: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.tune, color: Colors.white, size: 20),
-                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                                child: const Icon(Icons.close, color: Colors.grey),
+                              )
+                            : Container(
+                                margin: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.tune, color: Colors.white, size: 20),
+                              ),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
@@ -234,9 +271,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (filteredFoods.isEmpty)
                           _buildEmptyState(
                               icon: Icons.restaurant_menu_outlined,
-                              message: _selectedCategory == 'Semua'
-                                  ? 'Belum ada menu tersedia'
-                                  : 'Tidak ada menu di kategori ini')
+                              message: _searchQuery.isNotEmpty
+                                  ? 'Menu tidak ditemukan'
+                                  : _selectedCategory == 'Semua'
+                                      ? 'Belum ada menu tersedia'
+                                      : 'Tidak ada menu di kategori ini')
                         else
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
@@ -253,21 +292,33 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 32),
 
                         // --- STAN POPULER ---
-                        _buildSectionHeader('Stan Tersedia', '${allStalls.length} stan'),
-                        const SizedBox(height: 16),
-                        if (allStalls.isEmpty)
-                          _buildEmptyState(
-                              icon: Icons.store_outlined,
-                              message: 'Belum ada stan yang terdaftar')
-                        else
-                          ...allStalls
-                              .map((stall) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: _buildStallCard(
-                                      stall,
-                                      savedStallIds.contains(stall.id),
-                                    ),
-                                  )),
+                        Builder(
+                          builder: (context) {
+                            final filteredStalls = _filterStalls(allStalls);
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildSectionHeader('Stan Tersedia', '${filteredStalls.length} stan'),
+                                const SizedBox(height: 16),
+                                if (filteredStalls.isEmpty)
+                                  _buildEmptyState(
+                                      icon: Icons.store_outlined,
+                                      message: _searchQuery.isNotEmpty
+                                          ? 'Stan tidak ditemukan'
+                                          : 'Belum ada stan yang terdaftar')
+                                else
+                                  ...filteredStalls
+                                      .map((stall) => Padding(
+                                            padding: const EdgeInsets.only(bottom: 16),
+                                            child: _buildStallCard(
+                                              stall,
+                                              savedStallIds.contains(stall.id),
+                                            ),
+                                          )),
+                              ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                   );

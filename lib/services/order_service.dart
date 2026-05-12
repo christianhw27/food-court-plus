@@ -34,4 +34,11 @@ class OrderService {
   Future<void> updateOrderStatus(String orderId, String newStatus) async {
     await _firestore.collection('orders').doc(orderId).update({'status': newStatus});
   }
+
+  Future<void> updateOrderPaymentInfo(String orderId, String qrString, String transactionId) async {
+    await _firestore.collection('orders').doc(orderId).update({
+      'qrString': qrString,
+      'transactionId': transactionId,
+    });
+  }
 }

@@ -81,6 +81,7 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    required String phone,
     String role = 'buyer',
   }) async {
     try {
@@ -94,6 +95,7 @@ class AuthService {
         uid: userCredential.user!.uid,
         email: email,
         name: name,
+        phone: phone,
         role: role,
       );
 
@@ -157,6 +159,7 @@ class AuthService {
           uid: userCredential.user!.uid,
           email: userCredential.user!.email ?? '',
           name: userCredential.user!.displayName ?? 'Google User',
+          phone: '', // Harus diisi nanti
           role: 'buyer', // Default role
         );
         await _firestore.collection('users').doc(newUser.uid).set(newUser.toMap());
@@ -196,6 +199,11 @@ class AuthService {
     }
 
     await user.reload();
+  }
+
+  // Update user profile in Firestore
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    await _firestore.collection('users').doc(uid).update(data);
   }
 
   // Sign Out

@@ -5,19 +5,21 @@ import '../../models/order_model.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/cart_service.dart';
-import '../../services/doku_service.dart';
+import '../../services/louvin_service.dart';
 import '../../core/app_notification.dart';
 
 class PaymentScreen extends StatefulWidget {
   final double totalAmount;
   final String stallId;
   final String stallName;
+  final OrderModel? existingOrder;
 
   const PaymentScreen({
     super.key,
     required this.totalAmount,
     required this.stallId,
     required this.stallName,
+    this.existingOrder,
   });
 
   @override
@@ -47,58 +49,79 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final user = await AuthService().currentUserData;
       if (user == null) throw Exception("User not found");
 
-      // 1. Ambil data keranjang
-      final cartItems = CartService().items.map((item) => {
-        'foodId': item.food.id,
-        'name': item.food.name,
-        'price': item.food.price,
-        'quantity': item.quantity,
-      }).toList();
+      String orderId;
+      
+      if (widget.existingOrder != null) {
+        // Jika retry pembayaran untuk pesanan yang sudah ada
+        orderId = widget.existingOrder!.id;
+        _pendingOrder = widget.existingOrder;
+      } else {
+        // 1. Ambil data keranjang khusus untuk stall ini
+        final stallItems = CartService().items.where((item) => item.food.stallId == widget.stallId).toList();
+        final subtotal = stallItems.fold<double>(0, (sum, item) => sum + item.totalPrice);
+        
+        final cartItems = stallItems.map((item) => {
+          'foodId': item.food.id,
+          'name': item.food.name,
+          'price': item.food.price,
+          'quantity': item.quantity,
+        }).toList();
 
-      // 2. Buat objek pesanan (Status awal: Menunggu Pembayaran)
-      final order = OrderModel(
-        id: '', // Di-generate oleh Firestore nanti
-        buyerUid: user.uid,
-        stallId: widget.stallId,
-        stallName: widget.stallName,
-        items: cartItems,
-        subtotal: CartService().subtotal,
-        serviceFee: 2000,
-        totalAmount: widget.totalAmount,
-        status: 'Menunggu Pembayaran', 
-        paymentMethod: 'QRIS',
-        createdAt: DateTime.now(),
-      );
+        // 2. Buat objek pesanan (Status awal: Menunggu Pembayaran)
+        final order = OrderModel(
+          id: '', // Di-generate oleh Firestore nanti
+          buyerUid: user.uid,
+          buyerName: user.name.isNotEmpty ? user.name : 'Pembeli',
+          buyerPhone: user.phone,
+          stallId: widget.stallId,
+          stallName: widget.stallName,
+          items: cartItems,
+          subtotal: subtotal,
+          serviceFee: 0,
+          totalAmount: widget.totalAmount,
+          status: 'Menunggu Pembayaran', 
+          paymentMethod: 'QRIS',
+          createdAt: DateTime.now(),
+        );
 
-      // 3. Simpan ke Firestore untuk dapat ID (digunakan sebagai Invoice Number DOKU)
-      final orderId = await OrderService().createOrder(order);
-      _pendingOrder = order; // Simpan untuk referensi
+        // 3. Simpan ke Firestore untuk dapat ID
+        orderId = await OrderService().createOrder(order);
+        _pendingOrder = order; // Simpan untuk referensi
 
-      // 4. Kosongkan keranjang karena sudah jadi order
-      CartService().clearCart();
+        // 4. Kosongkan keranjang khusus untuk stan ini karena sudah jadi order
+        CartService().clearCartByStall(widget.stallId);
+      }
 
-      // 5. Request QRIS ke DOKU
-      final dokuService = DokuService();
-      // Prefix FCP untuk Food Court Plus
-      final invoiceNumber = 'FCP-${orderId.substring(0, 8).toUpperCase()}'; 
+      // 5. Request QRIS ke Louvin
+      final louvinService = LouvinService();
+      // Tambahkan timestamp di belakang reference agar selalu unik jika di-retry
+      final uniqueSuffix = DateTime.now().millisecondsSinceEpoch.toString().substring(8);
+      final reference = 'FCP-${orderId.substring(0, 8).toUpperCase()}-$uniqueSuffix';
       
       try {
-        final qrisString = await dokuService.generateQris(
-          invoiceNumber: invoiceNumber,
+        final result = await louvinService.createQris(
           amount: widget.totalAmount.toInt(),
+          customerName: user.name.isNotEmpty ? user.name : 'Pembeli',
+          description: 'Pesanan di ${widget.stallName}',
+          reference: reference,
         );
 
         if (mounted) {
           setState(() {
-            _qrisString = qrisString;
+            _qrisString = result['qr_string'] as String?;
             _errorMessage = null;
           });
         }
-      } catch (dokuError) {
-        // Jika DOKU error (misal Secret Key belum diset)
+        
+        // Simpan info QRIS ke pesanan agar bisa ditampilkan lagi dari menu Pesanan Saya
+        if (_qrisString != null && result['transaction_id'] != null) {
+          await OrderService().updateOrderPaymentInfo(orderId, _qrisString!, result['transaction_id']);
+        }
+      } catch (louvinError) {
+        // Jika Louvin error
         if (mounted) {
           setState(() {
-            _errorMessage = dokuError.toString();
+            _errorMessage = louvinError.toString();
           });
         }
       }
@@ -179,7 +202,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         children: [
                           CircularProgressIndicator(color: AppTheme.primaryColor),
                           SizedBox(height: 16),
-                          Text('Menghubungkan ke DOKU...', style: TextStyle(color: Colors.grey)),
+                          Text('Menghubungkan ke Louvin...', style: TextStyle(color: Colors.grey)),
                         ],
                       )
                     else if (_errorMessage != null)
@@ -194,7 +217,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Pesanan kamu sudah tercatat dengan status "Menunggu Pembayaran".\nBuka file lib/services/doku_service.dart untuk setting Secret Key.',
+                            'Pesanan kamu sudah tercatat dengan status "Menunggu Pembayaran".\nSilakan coba lagi atau hubungi admin.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
@@ -203,7 +226,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     else if (_qrisString != null)
                       Column(
                         children: [
-                          // Render QR Code sungguhan dari string QRIS DOKU
+                          // Render QR Code dari string QRIS Louvin
                           QrImageView(
                             data: _qrisString!,
                             version: QrVersions.auto,

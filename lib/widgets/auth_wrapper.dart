@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/setup_password_screen.dart';
+import '../screens/auth/setup_phone_screen.dart';
 import '../screens/main_layout.dart';
 import '../screens/seller/seller_home_screen.dart';
 import '../core/app_notification.dart';
@@ -42,7 +43,13 @@ class AuthWrapper extends StatelessWidget {
                   }
 
                   if (userSnapshot.hasData && userSnapshot.data != null) {
-                    String role = userSnapshot.data!.role;
+                    final user = userSnapshot.data!;
+                    
+                    if (user.phone.isEmpty) {
+                      return const SetupPhoneScreen();
+                    }
+
+                    String role = user.role;
 
                     if (role == 'admin') {
                       return const AdminDashboard();

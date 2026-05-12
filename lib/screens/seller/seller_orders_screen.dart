@@ -65,6 +65,15 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
             }
 
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Text('Terjadi kesalahan: ${snapshot.error}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                ),
+              );
+            }
+
             final orders = snapshot.data ?? [];
             final activeOrders = orders.where((o) => o.status == 'Sedang Disiapkan' || o.status == 'Menunggu Pembayaran').toList();
             final completedOrders = orders.where((o) => o.status == 'Selesai' || o.status == 'Dibatalkan').toList();
@@ -135,6 +144,30 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.person, size: 16, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text(
+                    order.buyerName,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                  ),
+                ],
+              ),
+              if (order.buyerPhone.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.phone, size: 16, color: Colors.grey),
+                    const SizedBox(width: 6),
+                    Text(
+                      order.buyerPhone,
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
               const Divider(height: 24),
               Text(itemsStr, style: const TextStyle(fontSize: 14, height: 1.5)),
               const SizedBox(height: 12),

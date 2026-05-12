@@ -12,6 +12,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
@@ -20,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
 
   void _register() async {
-    if (_nameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_nameController.text.isEmpty || _phoneController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
       AppNotification.showSuccess(context, 'Tolong isi semua field');
       return;
     }
@@ -32,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
         role: 'buyer', // Default selalu buyer demi keamanan
       );
       if (mounted) {
@@ -108,6 +110,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         _buildTextField('Nama Lengkap', _nameController, Icons.person_outline),
                         const SizedBox(height: 16),
+                        _buildTextField('Nomor HP (WhatsApp)', _phoneController, Icons.phone_android, isPhone: true),
+                        const SizedBox(height: 16),
                         _buildTextField('Email Mahasiswa', _emailController, Icons.email_outlined),
                         const SizedBox(height: 16),
                         _buildTextField('Password', _passwordController, Icons.lock_outline, isPassword: true),
@@ -139,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isPassword = false}) {
+  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {bool isPassword = false, bool isPhone = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -148,6 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: controller,
           obscureText: isPassword ? _obscurePassword : false,
+          keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
           decoration: InputDecoration(
             filled: true,
             fillColor: AppTheme.backgroundColor,
